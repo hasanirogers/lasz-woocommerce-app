@@ -1,0 +1,25 @@
+---
+const API_URL = import.meta.env.PUBLIC_API_URL;
+const REST_WC_URL = `${API_URL}/wp-json/wc/store/v1`;
+
+const bestSellingResponse = await fetch(`${REST_WC_URL}/products?orderby=popularity&per_page=4`);
+const bestSellingProducts = await bestSellingResponse.json();
+
+---
+{bestSellingProducts.length > 0 && (
+  <lasz-page-container>
+    <h2>Best Sellers</h2>
+    <lasz-products>
+      {
+        bestSellingProducts.map((product: any) => (
+          <lasz-product>
+            <img src={product.images[0].src} alt={product.images[0].alt} />
+            <h3 set:html={product.name} />
+            <span set:html={product.price_html} />
+            <kemet-button link={`/product/${product.slug}`} rounded="lg">View Product</kemet-button>
+          </lasz-product>
+        ))
+      }
+    </lasz-products>
+  </lasz-page-container>
+)}
