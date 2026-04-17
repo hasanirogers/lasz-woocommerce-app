@@ -10,16 +10,7 @@ const bestSellingProducts = await bestSellingResponse.json();
   <lasz-page-container>
     <h2>Best Sellers</h2>
     <lasz-products>
-      {
-        bestSellingProducts.map((product: any) => (
-          <lasz-product>
-            <img src={product.images[0].src} alt={product.images[0].alt} />
-            <h3 set:html={product.name} />
-            <span set:html={product.price_html} />
-            <kemet-button link={`/product/${product.slug}`} rounded="lg">View Product</kemet-button>
-          </lasz-product>
-        ))
-      }
+      {bestSellingProducts.map((product: any) => <lasz-product data={JSON.stringify(product)}></lasz-product>)}
     </lasz-products>
   </lasz-page-container>
 )}

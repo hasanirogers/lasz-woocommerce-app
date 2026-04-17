@@ -1,5 +1,5 @@
 {
-  "name": "@hasanirogers/lasz-todo",
+  "name": "lasz-woocommerce-app",
   "type": "module",
   "version": "0.0.1",
   "private": true,
@@ -11,6 +11,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/lit": "^4.3.0",
     "@astrojs/node": "^9.5.3",
     "@supabase/supabase-js": "^2.95.3",
     "@wordpress/block-library": "^9.43.0",

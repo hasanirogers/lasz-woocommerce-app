@@ -1,7 +1,5 @@
 ---
 const API_URL = import.meta.env.PUBLIC_API_URL;
-// const REST_WC_URL = `${API_URL}/wp-json/wc/v3`;
-// const REST_CUSTOM_URL = `${API_URL}/wp-json/api-woocommerce/v1`;
 const REST_WP_URL = `${API_URL}/wp-json/wp/v2`;
 
 const heroResponse = await fetch(`${REST_WP_URL}/hero?_embed`);

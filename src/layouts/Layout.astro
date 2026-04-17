@@ -3,11 +3,11 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 
 import 'kemet-ui/styles/kemet.base.css';
+import '@wordpress/block-library/build-style/style.css';
+import '@wordpress/block-library/build-style/theme.css';
 import '../styles/base.css';
 import '../styles/cea.css';
 import '../styles/wordpress.css';
-import '@wordpress/block-library/build-style/style.css';
-import '@wordpress/block-library/build-style/theme.css';
 ---
 <html lang="en">
 	<head>
@@ -43,13 +43,17 @@ import '@wordpress/block-library/build-style/theme.css';
   import 'kemet-ui/elements/fab';
   import 'kemet-ui/elements/alert';
   import 'kemet-ui/elements/icon-bootstrap';
+  import 'kemet-ui/elements/field';
   import 'kemet-ui/elements/input';
   import 'kemet-ui/elements/popper';
   import 'kemet-ui/elements/carousel';
   import 'kemet-ui/elements/carousel-slide';
   import 'kemet-ui/elements/carousel-prev';
   import 'kemet-ui/elements/carousel-next';
+  import 'kemet-ui/elements/select';
+  import 'kemet-ui/elements/option';
   // app custom elements
   import '../elements/lasz-header';
   import '../elements/lasz-nav-top';
+  import '../elements/lasz-product';
 </script>

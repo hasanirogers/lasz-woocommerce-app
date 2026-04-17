@@ -3,7 +3,7 @@ import type { MenuItem } from '../shared/interfaces';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
 const REST_WC_URL = `${API_URL}/wp-json/wc/v3`;
-const REST_CUSTOM_URL = `${API_URL}/wp-json/api-woocommerce/v1`;
+const REST_CUSTOM_URL = `${API_URL}/wp-json/lasz-woocommerce/v1`;
 
 const siteLogoData = await fetch(`${REST_CUSTOM_URL}/site_logo`);
 const siteLogoFull = (await siteLogoData.json()).full ?? '/logo.webp';
@@ -34,7 +34,7 @@ const navCategories = await navCategoriesResponse.json();
 ---
 
 <lasz-header
-  home={API_URL}
+  home="/"
   logo={siteLogoFull}
   name={siteName}
   logout={logoutUrl}
@@ -61,7 +61,7 @@ const navCategories = await navCategoriesResponse.json();
           <kemet-popper effect="fade" placement="bottom-start">
             <div slot="trigger">
               <kemet-icon-bootstrap icon="bag" size="16"></kemet-icon-bootstrap>
-              <a slot="trigger" href="/shop">All Categories</a>
+              <a slot="trigger">All Categories</a>
               <kemet-icon-bootstrap icon="chevron-down" size="16"></kemet-icon-bootstrap>
             </div>
             <lasz-nav-categories slot="content">
@@ -69,7 +69,7 @@ const navCategories = await navCategoriesResponse.json();
                 {
                   navCategories.map((category: any) => (
                     <li>
-                      <a href={category.url}>
+                      <a href={`/products/${category.slug}`}>
                         {!!category.thumbnail && <img src={category.thumbnail} alt={category.name} />}
                         <div>
                           <h3>{category.name}</h3>

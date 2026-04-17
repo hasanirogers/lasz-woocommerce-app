@@ -24,7 +24,7 @@ const categories = allCategories
       <ul>
         {categories.map((category: any) => (
           <li>
-            <a href={`/product-category/${category.slug}`}>
+            <a href={`/products/${category.slug}`}>
               {category.image && <img src={category.image.src} alt={category.name} />}
               <h3>{category.name}</h3>
               <p>{category.count} products</p>

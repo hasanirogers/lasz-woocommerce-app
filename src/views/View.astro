@@ -9,11 +9,6 @@ const theContentData = await theContentResponse.json();
 const theContent = theContentData[0]?.content?.rendered ?? null;
 
 ---
-<script define:vars={{ theContent }}>
-  if (!theContent) {
-    window.location.href = '/404';
-  }
-</script>
 
 <lasz-page-main>
   <Fragment set:html={theContent} />
