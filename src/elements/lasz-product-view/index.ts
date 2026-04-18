@@ -34,7 +34,8 @@ export default class LaszProductView extends LitElement {
     isLoading: CartStore['isLoading'];
     error: CartStore['error']
   }, {
-    addToCart: CartStore['addToCart']
+    addToCart: CartStore['addToCart'],
+    fetchCart: CartStore['fetchCart']
   }>;
 
   constructor() {
@@ -48,7 +49,8 @@ export default class LaszProductView extends LitElement {
         error: state.error
       }),
       (state) => ({
-        addToCart: state.addToCart
+        addToCart: state.addToCart,
+        fetchCart: state.fetchCart
       })
     );
   }
@@ -58,6 +60,9 @@ export default class LaszProductView extends LitElement {
       this.product = JSON.parse(this.data);
       console.log('Product data:', this.product);
     }
+
+    // Initialize cart to get nonce
+    this.cartController?.actions?.fetchCart?.();
   }
 
   render() {
@@ -156,13 +161,24 @@ export default class LaszProductView extends LitElement {
 
     try {
       let variationId: number | undefined;
-      let variation: Record<string, string> | undefined;
+      let variation: Array<{attribute: string, value: string}> | undefined;
 
       if (this.product.variations && this.product.variations.length > 0) {
+        console.log('Product variations:', this.product.variations);
+        console.log('Selected variations:', this.selectedVariations);
+
         const matchingVariation = this.findMatchingVariation();
         if (matchingVariation) {
           variationId = matchingVariation.id;
-          variation = this.selectedVariations;
+          // Use the variation attributes from the matching variation to ensure exact case match
+          if (matchingVariation.attributes) {
+            variation = matchingVariation.attributes.map((attr: any) => ({
+              attribute: attr.name || attr.option,
+              value: attr.option || attr.value
+            }));
+          }
+          console.log('Matching variation:', matchingVariation);
+          console.log('Formatted variation:', variation);
         }
       }
 
