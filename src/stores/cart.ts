@@ -90,10 +90,6 @@ const store = createStore<CartStore>((set, get) => ({
           ...(variation && { variation }),
         };
 
-      console.log('Cart payload:', payload);
-      console.log('Variation data:', variation);
-      console.log('Product ID:', productId);
-
       const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart/add-item`, {
         method: 'POST',
         headers,
@@ -108,6 +104,8 @@ const store = createStore<CartStore>((set, get) => ({
 
       const data = await response.json();
       const newCartToken = response.headers.get('Cart-Token');
+
+      console.log('added item to cart', data.items);
 
       set({
         items: data.items || [],
@@ -270,6 +268,8 @@ const store = createStore<CartStore>((set, get) => ({
 
       const data = await response.json();
       const newCartToken = response.headers.get('Cart-Token');
+
+      console.log('will set items from fetchCart', data.items);
 
       set({
         items: data.items || [],

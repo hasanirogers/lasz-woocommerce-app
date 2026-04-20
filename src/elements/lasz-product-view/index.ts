@@ -188,6 +188,13 @@ export default class LaszProductView extends LitElement {
         variationId,
         variation
       );
+
+      // Log cart contents after adding
+      if (this.cartController?.data) {
+        console.log('Cart after adding item:', this.cartController.data.items);
+        console.log('Cart total:', this.cartController.data.items.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0));
+      }
+
     } catch (error) {
       console.error('Error adding to cart:', error);
     } finally {
