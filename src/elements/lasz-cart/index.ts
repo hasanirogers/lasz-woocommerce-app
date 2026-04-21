@@ -15,7 +15,8 @@ export class LaszCart extends LitElement {
     error: CartStore['error']
   }, {
     addToCart: CartStore['addToCart'],
-    fetchCart: CartStore['fetchCart']
+    fetchCart: CartStore['fetchCart'],
+    restoreCart: CartStore['restoreCart']
   }>
 
   constructor() {
@@ -30,12 +31,16 @@ export class LaszCart extends LitElement {
       }),
       (state) => ({
         addToCart: state.addToCart,
-        fetchCart: state.fetchCart
+        fetchCart: state.fetchCart,
+        restoreCart: state.restoreCart
       })
     );
   }
 
   firstUpdated() {
+    // First restore from localStorage for immediate display
+    this.cartController.actions?.restoreCart();
+    // Then fetch from server to sync with latest data
     this.cartController.actions?.fetchCart();
   }
 
@@ -85,7 +90,7 @@ export class LaszCart extends LitElement {
                         `)}
                       </div>
                     `}
-                    <div class="item-price">${item.price}</div>
+                    <div class="item-price">${item.prices.price}</div>
                   </div>
 
                   <div class="item-quantity">
@@ -101,7 +106,7 @@ export class LaszCart extends LitElement {
                   </div>
 
                   <div class="item-subtotal">
-                    ${(parseFloat(item.price) * item.quantity).toFixed(2)}
+                    ${(parseFloat(item.prices.price) * item.quantity).toFixed(2)}
                   </div>
 
                   <div class="item-actions">
@@ -160,6 +165,6 @@ export class LaszCart extends LitElement {
   }
 
   calculateSubtotal(items: CartStore['items']) {
-    return items.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0).toFixed(2);
+    return items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0).toFixed(2);
   }
 }

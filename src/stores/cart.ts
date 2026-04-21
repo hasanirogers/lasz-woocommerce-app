@@ -1,11 +1,28 @@
 import { createStore } from 'zustand/vanilla';
 
+// LocalStorage keys
+const CART_STORAGE_KEY = 'lasz-cart-data';
+const CART_TOKEN_KEY = 'lasz-cart-token';
+const CART_NONCE_KEY = 'lasz-cart-nonce';
+
 export interface CartItem {
   key: string;
   id: number;
   name: string;
   quantity: number;
-  price: string;
+  prices: {
+    current_code: string;
+    currency_decimal_separator: string;
+    currency_minor_unit: number;
+    currency_prefix: string;
+    currency_suffix: string;
+    currency_symbol: string;
+    currency_thousand_separator: string;
+    price: string;
+    raw_prices: any;
+    regular_price: string;
+    sale_price: string;
+  };
   product_id: number;
   variation_id?: number;
   variation?: Record<string, string>;
@@ -28,44 +45,142 @@ export interface CartActions {
   fetchCart: () => Promise<void>;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  restoreCart: () => void;
+  saveCart: () => void;
+  getSubtotal: () => string;
+  getTotal: () => string;
 }
 
 export interface CartStore extends CartState, CartActions {}
 
 const PUBLIC_API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8888';
 
-// Function to get nonce from WordPress
-const getNonce = async (): Promise<string | null> => {
+// LocalStorage utility functions
+const saveCartToStorage = (items: CartItem[], total: string, cartToken: string | null, nonce: string | null) => {
   try {
-    // Try to get nonce from the cart endpoint first
-    const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart`);
-    const data = await response.json();
-
-    // Check if nonce is in the response
-    if (data.nonce) {
-      return data.nonce;
+    const cartData = {
+      items,
+      total,
+      cartToken,
+      nonce,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
+    if (cartToken) {
+      localStorage.setItem(CART_TOKEN_KEY, cartToken);
     }
-
-    // If not, try the store API nonce endpoint
-    const nonceResponse = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/nonce`);
-    const nonceData = await nonceResponse.json();
-    return nonceData.nonce || null;
+    if (nonce) {
+      localStorage.setItem(CART_NONCE_KEY, nonce);
+    }
   } catch (error) {
-    console.error('Failed to fetch nonce:', error);
-    return null;
+    console.warn('Failed to save cart to localStorage:', error);
   }
 };
 
+const loadCartFromStorage = () => {
+  try {
+    const storedCart = localStorage.getItem(CART_STORAGE_KEY);
+    const storedToken = localStorage.getItem(CART_TOKEN_KEY);
+    const storedNonce = localStorage.getItem(CART_NONCE_KEY);
+    
+    if (storedCart) {
+      const cartData = JSON.parse(storedCart);
+      // Check if cart data is not older than 24 hours
+      const isRecent = (Date.now() - cartData.timestamp) < 24 * 60 * 60 * 1000;
+      
+      if (isRecent) {
+        return {
+          items: cartData.items || [],
+          total: cartData.total || '0',
+          cartToken: storedToken || cartData.cartToken || null,
+          nonce: storedNonce || cartData.nonce || null
+        };
+      } else {
+        // Clear old cart data
+        localStorage.removeItem(CART_STORAGE_KEY);
+        localStorage.removeItem(CART_TOKEN_KEY);
+        localStorage.removeItem(CART_NONCE_KEY);
+      }
+    }
+    
+    return {
+      items: [],
+      total: '0',
+      cartToken: storedToken || null,
+      nonce: storedNonce || null
+    };
+  } catch (error) {
+    console.warn('Failed to load cart from localStorage:', error);
+    return {
+      items: [],
+      total: '0',
+      cartToken: null,
+      nonce: null
+    };
+  }
+};
+
+const clearCartFromStorage = () => {
+  try {
+    localStorage.removeItem(CART_STORAGE_KEY);
+    localStorage.removeItem(CART_TOKEN_KEY);
+    localStorage.removeItem(CART_NONCE_KEY);
+  } catch (error) {
+    console.warn('Failed to clear cart from localStorage:', error);
+  }
+};
+
+// Function to get nonce from WordPress
+// const getNonce = async (): Promise<string | null> => {
+//   try {
+//     // Try to get nonce from the cart endpoint first
+//     const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart`);
+//     const data = await response.json();
+
+//     // Check if nonce is in the response
+//     if (data.nonce) {
+//       return data.nonce;
+//     }
+
+//     // If not, try the store API nonce endpoint
+//     const nonceResponse = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/nonce`);
+//     const nonceData = await nonceResponse.json();
+//     return nonceData.nonce || null;
+//   } catch (error) {
+//     console.error('Failed to fetch nonce:', error);
+//     return null;
+//   }
+// };
+
+// Initialize store with persisted data
+const persistedData = loadCartFromStorage();
+
 const store = createStore<CartStore>((set, get) => ({
-  items: [],
-  total: '0',
+  items: persistedData.items,
+  total: persistedData.total,
   isLoading: false,
   error: null,
-  cartToken: null,
-  nonce: null,
+  cartToken: persistedData.cartToken,
+  nonce: persistedData.nonce,
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
   setError: (error: string | null) => set({ error }),
+
+  restoreCart: () => {
+    const persistedData = loadCartFromStorage();
+    set({
+      items: persistedData.items,
+      total: persistedData.total,
+      cartToken: persistedData.cartToken,
+      nonce: persistedData.nonce,
+      isLoading: false
+    });
+  },
+
+  saveCart: () => {
+    const { items, total, cartToken, nonce } = get();
+    saveCartToStorage(items, total, cartToken, nonce);
+  },
 
   addToCart: async (productId: number, quantity = 1, variationId?: number, variation?: Array<{attribute: string, value: string}>) => {
     set({ isLoading: true, error: null });
@@ -113,6 +228,10 @@ const store = createStore<CartStore>((set, get) => ({
         cartToken: newCartToken || cartToken,
         isLoading: false
       });
+      
+      // Save to localStorage after successful API call
+      const { items, total, cartToken: updatedToken, nonce: currentNonce } = get();
+      saveCartToStorage(items, total, updatedToken, currentNonce);
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to add to cart',
@@ -154,6 +273,10 @@ const store = createStore<CartStore>((set, get) => ({
         cartToken: newCartToken || cartToken,
         isLoading: false
       });
+      
+      // Save to localStorage after successful API call
+      const { items, total, cartToken: updatedToken, nonce: currentNonce } = get();
+      saveCartToStorage(items, total, updatedToken, currentNonce);
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to remove from cart',
@@ -201,6 +324,10 @@ const store = createStore<CartStore>((set, get) => ({
         cartToken: newCartToken || cartToken,
         isLoading: false
       });
+      
+      // Save to localStorage after successful API call
+      const { items, total, cartToken: updatedToken, nonce: currentNonce } = get();
+      saveCartToStorage(items, total, updatedToken, currentNonce);
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to update cart',
@@ -239,6 +366,9 @@ const store = createStore<CartStore>((set, get) => ({
         cartToken,
         isLoading: false
       });
+      
+      // Clear localStorage after successful API call
+      clearCartFromStorage();
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to clear cart',
@@ -278,6 +408,10 @@ const store = createStore<CartStore>((set, get) => ({
         nonce: data.nonce || null,
         isLoading: false
       });
+      
+      // Save to localStorage after successful fetch
+      const { items, total, cartToken: updatedToken, nonce: updatedNonce } = get();
+      saveCartToStorage(items, total, updatedToken, updatedNonce);
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch cart',
@@ -285,6 +419,19 @@ const store = createStore<CartStore>((set, get) => ({
       });
     }
   },
+
+  getSubtotal: () => {
+    const { items } = get();
+    return (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
+  },
+
+  getTotal: () => {
+    const { items } = get();
+    const subtotal = (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
+    const shipping = items.length > 0 ? 9.99 : 0;
+    const tax = parseFloat(subtotal) * 0.08;
+    return (parseFloat(subtotal) + shipping + tax).toFixed(2);
+  }
 }));
 
 export default store;

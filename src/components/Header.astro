@@ -18,7 +18,6 @@ const headerMenuData = await headerMenuResponse.json();
 const wcCartResponse = await fetch(`${REST_WC_URL}/cart`);
 const cartData = await wcCartResponse.json();
 const cartTotal = cartData.totals?.total ?? '$0'; // Price total
-const itemCount = cartData.cart_contents_count ?? 0; // Item count
 
 const userResponse = await fetch(`${API_URL}/wp-json/wp/v2/users/me`);
 const isLoggedIn = userResponse.ok;
@@ -34,12 +33,10 @@ const navCategories = await navCategoriesResponse.json();
 ---
 
 <lasz-header
-  home="/"
   logo={siteLogoFull}
   name={siteName}
   logout={logoutUrl}
   total={cartTotal}
-  count={itemCount}
   logged-in={isLoggedIn ? true : null}
 >
   <nav class="header">
