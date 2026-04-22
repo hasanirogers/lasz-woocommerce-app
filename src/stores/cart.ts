@@ -1,6 +1,5 @@
 import { createStore } from 'zustand/vanilla';
 
-// LocalStorage keys
 const CART_STORAGE_KEY = 'lasz-cart-data';
 const CART_TOKEN_KEY = 'lasz-cart-token';
 const CART_NONCE_KEY = 'lasz-cart-nonce';
@@ -9,6 +8,11 @@ export interface CartItem {
   key: string;
   id: number;
   name: string;
+  images: Array<{
+    id: number;
+    src: string;
+    thumbnail: string;
+  }>;
   quantity: number;
   prices: {
     current_code: string;
@@ -25,7 +29,7 @@ export interface CartItem {
   };
   product_id: number;
   variation_id?: number;
-  variation?: Record<string, string>;
+  variation?: Record<string, {attribute: string, value: string, raw_attribute: string}>;
 }
 
 export interface CartState {
@@ -35,6 +39,23 @@ export interface CartState {
   error: string | null;
   cartToken: string | null;
   nonce: string | null;
+  totals: {
+    total_items: string;
+    total_items_tax: string;
+    total_shipping: string;
+    total_shipping_tax: string;
+    total_tax: string;
+    total_price: string;
+    currency_code: string;
+    currency_symbol: string;
+  } | null;
+  shippingRates: Array<{
+    rate_id: string;
+    name: string;
+    price: string;
+    taxes: string;
+    selected: boolean;
+  }> | null;
 }
 
 export interface CartActions {
@@ -47,15 +68,17 @@ export interface CartActions {
   setError: (error: string | null) => void;
   restoreCart: () => void;
   saveCart: () => void;
-  getSubtotal: () => string;
   getTotal: () => string;
+  getShippingCost: () => string;
+  getTaxCost: () => string;
+  getSubtotal: () => string;
+  getCurrencySymbol: () => string;
 }
 
 export interface CartStore extends CartState, CartActions {}
 
 const PUBLIC_API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8888';
 
-// LocalStorage utility functions
 const saveCartToStorage = (items: CartItem[], total: string, cartToken: string | null, nonce: string | null) => {
   try {
     const cartData = {
@@ -130,27 +153,9 @@ const clearCartFromStorage = () => {
   }
 };
 
-// Function to get nonce from WordPress
-// const getNonce = async (): Promise<string | null> => {
-//   try {
-//     // Try to get nonce from the cart endpoint first
-//     const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart`);
-//     const data = await response.json();
-
-//     // Check if nonce is in the response
-//     if (data.nonce) {
-//       return data.nonce;
-//     }
-
-//     // If not, try the store API nonce endpoint
-//     const nonceResponse = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/nonce`);
-//     const nonceData = await nonceResponse.json();
-//     return nonceData.nonce || null;
-//   } catch (error) {
-//     console.error('Failed to fetch nonce:', error);
-//     return null;
-//   }
-// };
+export const centsToDollars = (cents: string) => {
+  return `$${(parseInt(cents) / 100).toFixed(2)}`;
+};
 
 // Initialize store with persisted data
 const persistedData = loadCartFromStorage();
@@ -162,6 +167,8 @@ const store = createStore<CartStore>((set, get) => ({
   error: null,
   cartToken: persistedData.cartToken,
   nonce: persistedData.nonce,
+  totals: null,
+  shippingRates: null,
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
   setError: (error: string | null) => set({ error }),
@@ -224,7 +231,9 @@ const store = createStore<CartStore>((set, get) => ({
 
       set({
         items: data.items || [],
-        total: data.totals_total || '0',
+        total: data.totals?.total_price || data.totals_total || '0',
+        totals: data.totals || null,
+        shippingRates: data.shipping_rates || null,
         cartToken: newCartToken || cartToken,
         isLoading: false
       });
@@ -269,7 +278,9 @@ const store = createStore<CartStore>((set, get) => ({
 
       set({
         items: data.items || [],
-        total: data.totals_total || '0',
+        total: data.totals?.total_price || data.totals_total || '0',
+        totals: data.totals || null,
+        shippingRates: data.shipping_rates || null,
         cartToken: newCartToken || cartToken,
         isLoading: false
       });
@@ -320,7 +331,9 @@ const store = createStore<CartStore>((set, get) => ({
 
       set({
         items: data.items || [],
-        total: data.totals_total || '0',
+        total: data.totals?.total_price || data.totals_total || '0',
+        totals: data.totals || null,
+        shippingRates: data.shipping_rates || null,
         cartToken: newCartToken || cartToken,
         isLoading: false
       });
@@ -403,7 +416,9 @@ const store = createStore<CartStore>((set, get) => ({
 
       set({
         items: data.items || [],
-        total: data.totals_total || '0',
+        total: data.totals?.total_price || data.totals_total || '0',
+        totals: data.totals || null,
+        shippingRates: data.shipping_rates || null,
         cartToken: newCartToken || cartToken,
         nonce: data.nonce || null,
         isLoading: false
@@ -420,17 +435,54 @@ const store = createStore<CartStore>((set, get) => ({
     }
   },
 
-  getSubtotal: () => {
-    const { items } = get();
-    return (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
-  },
-
   getTotal: () => {
+    const { totals } = get();
+    // Use API total if available, otherwise fall back to calculated value
+    if (totals?.total_price) {
+      return (parseFloat(totals.total_price) * 0.01).toFixed(2);
+    }
+    // Fallback to calculation if API data not available
     const { items } = get();
     const subtotal = (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
     const shipping = items.length > 0 ? 9.99 : 0;
     const tax = parseFloat(subtotal) * 0.08;
     return (parseFloat(subtotal) + shipping + tax).toFixed(2);
+  },
+
+  getShippingCost: () => {
+    const { totals } = get();
+    if (totals?.total_shipping) {
+      return (parseFloat(totals.total_shipping) * 0.01).toFixed(2);
+    }
+    // Fallback to default shipping cost
+    const { items } = get();
+    return items.length > 0 ? '9.99' : '0.00';
+  },
+
+  getTaxCost: () => {
+    const { totals } = get();
+    if (totals?.total_tax) {
+      return (parseFloat(totals.total_tax) * 0.01).toFixed(2);
+    }
+    // Fallback to calculated tax
+    const { items } = get();
+    const subtotal = (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
+    return (parseFloat(subtotal) * 0.08).toFixed(2);
+  },
+
+  getSubtotal: () => {
+    const { totals } = get();
+    if (totals?.total_items) {
+      return (parseFloat(totals.total_items) * 0.01).toFixed(2);
+    }
+    // Fallback to calculation
+    const { items } = get();
+    return (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
+  },
+
+  getCurrencySymbol: () => {
+    const { totals } = get();
+    return totals?.currency_symbol || '$';
   }
 }));
 

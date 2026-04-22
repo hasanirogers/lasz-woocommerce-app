@@ -2,7 +2,6 @@
 import type { MenuItem } from '../shared/interfaces';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
-const REST_WC_URL = `${API_URL}/wp-json/wc/v3`;
 const REST_CUSTOM_URL = `${API_URL}/wp-json/lasz-woocommerce/v1`;
 
 const siteLogoData = await fetch(`${REST_CUSTOM_URL}/site_logo`);
@@ -15,13 +14,8 @@ const siteName = blogInfo.name;
 const headerMenuResponse = await fetch(`${REST_CUSTOM_URL}/nav/header`);
 const headerMenuData = await headerMenuResponse.json();
 
-const wcCartResponse = await fetch(`${REST_WC_URL}/cart`);
-const cartData = await wcCartResponse.json();
-const cartTotal = cartData.totals?.total ?? '$0'; // Price total
-
 const userResponse = await fetch(`${API_URL}/wp-json/wp/v2/users/me`);
 const isLoggedIn = userResponse.ok;
-const logoutUrl = `${API_URL}/wp-json/wp/v2/logout`;
 
 const topMenuResponse = await fetch(`${REST_CUSTOM_URL}/nav/top`);
 const topMenuData = await topMenuResponse.json();
@@ -35,8 +29,6 @@ const navCategories = await navCategoriesResponse.json();
 <lasz-header
   logo={siteLogoFull}
   name={siteName}
-  logout={logoutUrl}
-  total={cartTotal}
   logged-in={isLoggedIn ? true : null}
 >
   <nav class="header">

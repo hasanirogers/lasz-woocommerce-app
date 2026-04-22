@@ -1,9 +1,11 @@
 import { html, LitElement, unsafeCSS } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, queryAll } from 'lit/decorators.js';
 import { ZustandController } from '../../controllers/zustand';
-import cartStore, { type CartStore } from '../../stores/cart';
+import cartStore, { centsToDollars, type CartStore } from '../../stores/cart';
 
 import styles from './styles.css?inline';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+
 
 @customElement('lasz-cart')
 export class LaszCart extends LitElement {
@@ -16,7 +18,14 @@ export class LaszCart extends LitElement {
   }, {
     addToCart: CartStore['addToCart'],
     fetchCart: CartStore['fetchCart'],
-    restoreCart: CartStore['restoreCart']
+    restoreCart: CartStore['restoreCart'],
+    getSubtotal: CartStore['getSubtotal'],
+    getShippingCost: CartStore['getShippingCost'],
+    getTaxCost: CartStore['getTaxCost'],
+    getCurrencySymbol: CartStore['getCurrencySymbol'],
+    getTotal: CartStore['getTotal'],
+    updateQuantity: CartStore['updateQuantity'],
+    removeFromCart: CartStore['removeFromCart']
   }>
 
   constructor() {
@@ -32,28 +41,25 @@ export class LaszCart extends LitElement {
       (state) => ({
         addToCart: state.addToCart,
         fetchCart: state.fetchCart,
-        restoreCart: state.restoreCart
+        restoreCart: state.restoreCart,
+        getSubtotal: state.getSubtotal,
+        getShippingCost: state.getShippingCost,
+        getTaxCost: state.getTaxCost,
+        getCurrencySymbol: state.getCurrencySymbol,
+        getTotal: state.getTotal,
+        updateQuantity: state.updateQuantity,
+        removeFromCart: state.removeFromCart
       })
     );
   }
 
   firstUpdated() {
-    // First restore from localStorage for immediate display
-    this.cartController.actions?.restoreCart();
-    // Then fetch from server to sync with latest data
-    this.cartController.actions?.fetchCart();
+    this.cartController.actions?.restoreCart(); // read from local storage
+    this.cartController.actions?.fetchCart(); // sync with latest data from server
   }
 
   render() {
     const { items, isLoading, error } = this.cartController.data;
-
-    console.log(this.cartController.data);
-
-    const subtotal = this.calculateSubtotal(items);
-    const shipping = items.length > 0 ? 9.99 : 0;
-    const tax = parseFloat(subtotal) * 0.08; // 8% tax
-    const calculatedTotal = (parseFloat(subtotal) + shipping + tax).toFixed(2);
-
     return html`
       <div class="cart-container">
         <div class="cart-header">
@@ -77,20 +83,13 @@ export class LaszCart extends LitElement {
               ${items.map((item) => html`
                 <div class="cart-item" data-key="${item.key}">
                   <div class="item-image">
-                    <img src=${`/api/placeholder/product-${item.id}.jpg`} alt=${item.name} />
+                    <img src=${item.images[0].thumbnail} alt=${item.name} />
                   </div>
 
                   <div class="item-details">
-                    <h3 class="item-name">${item.name}</h3>
-
-                    ${item.variation && Object.keys(item.variation).length > 0 && html`
-                      <div class="item-variations">
-                        ${Object.entries(item.variation).map(([key, value]) => html`
-                          <span class="variation">${key}: ${value}</span>
-                        `)}
-                      </div>
-                    `}
-                    <div class="item-price">${item.prices.price}</div>
+                    <h3 class="item-name">${unsafeHTML(item.name)}</h3>
+                    ${this.makeVariations(item)}
+                    <div class="item-price">${centsToDollars(item.prices.price)}</div>
                   </div>
 
                   <div class="item-quantity">
@@ -102,15 +101,16 @@ export class LaszCart extends LitElement {
                       value="${item.quantity}"
                       class="quantity-input"
                       data-key="${item.key}"
+                      @change="${this.handleQuantityChange}"
                     />
                   </div>
 
                   <div class="item-subtotal">
-                    ${(parseFloat(item.prices.price) * item.quantity).toFixed(2)}
+                    ${centsToDollars((parseInt(item.prices.price) * item.quantity).toString())}
                   </div>
 
                   <div class="item-actions">
-                    <button class="remove-btn" data-key="${item.key}">
+                    <button class="remove-btn" data-key="${item.key}" @click="${this.handleRemoveItem}">
                       Remove
                     </button>
                   </div>
@@ -123,22 +123,22 @@ export class LaszCart extends LitElement {
 
               <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>${subtotal}</span>
+                <span>${this.cartController.actions?.getCurrencySymbol()}${this.cartController.actions?.getSubtotal()}</span>
               </div>
 
               <div class="summary-row">
                 <span>Shipping:</span>
-                <span>${shipping.toFixed(2)}</span>
+                <span>${this.cartController.actions?.getCurrencySymbol()}${this.cartController.actions?.getShippingCost()}</span>
               </div>
 
               <div class="summary-row">
                 <span>Tax:</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>${this.cartController.actions?.getCurrencySymbol()}${this.cartController.actions?.getTaxCost()}</span>
               </div>
 
               <div class="summary-row total">
                 <span>Total:</span>
-                <span>${calculatedTotal}</span>
+                <span>${this.cartController.actions?.getCurrencySymbol()}${this.cartController.actions?.getTotal()}</span>
               </div>
 
               <div class="cart-actions">
@@ -164,7 +164,45 @@ export class LaszCart extends LitElement {
     `;
   }
 
-  calculateSubtotal(items: CartStore['items']) {
-    return items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0).toFixed(2);
+  makeVariations(item: CartStore['items'][0]) {
+    if (!item.variation || Object.keys(item.variation).length === 0) {
+      return '';
+    }
+    return html`
+      <div class="item-variations">
+        ${Object.values(item.variation).map((value) => html`
+          <span class="variation">${value.attribute}: ${value.value}</span>
+        `)}
+      </div>
+    `;
+  }
+
+  handleQuantityChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const key = target.dataset.key ?? '1';
+    const newQuantity = parseInt(target.value);
+    
+    if (newQuantity < 1) {
+      target.value = '1';
+      return;
+    }
+    
+    try {
+      this.cartController.actions?.updateQuantity(key, newQuantity);
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      target.value = target.defaultValue; // Reset to original value
+    }
+  }
+
+  handleRemoveItem(event: Event) {
+    const target = event.target as HTMLButtonElement;
+    const key = target.dataset.key ?? '';
+    
+    try {
+      this.cartController.actions?.removeFromCart(key);
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+    }
   }
 }

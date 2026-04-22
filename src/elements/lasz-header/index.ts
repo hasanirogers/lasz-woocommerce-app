@@ -15,9 +15,6 @@ export default class LaszHeader extends LitElement {
   @property()
   name?: String;
 
-  @property()
-  logout?: String;
-
   @property({ type: Boolean, reflect: true, attribute: 'logged-in' })
   logged?: Boolean;
 
@@ -31,8 +28,8 @@ export default class LaszHeader extends LitElement {
       (state) => ({
         items: state.items,
       }),
-      () => ({
-        getSubtotal: cartStore.getState().getSubtotal ?? (() => '0.00'),
+      (state  ) => ({
+        getSubtotal: state.getSubtotal ?? (() => '0.00'),
       })
     );
   }

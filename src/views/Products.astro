@@ -18,7 +18,6 @@ const validSortOptions = new Map([
 let sort = 'popularity';
 
 if (Array.from(validSortOptions.keys()).includes(orderBy)) {
-  console.log('Setting sort to', orderBy);
   sort = orderBy;
 }
 
@@ -36,32 +35,34 @@ if (category) {
 
 <lasz-page-main>
   <lasz-page-container>
-    {category ? (
-      <lasz-view-products>
-        <header>
-          <h2>{category.name}</h2>
-          <p>{category.description}</p>
-          <kemet-field>
-            <kemet-select slot="input" name="orderby">
-              {Array.from(validSortOptions.entries()).map(([value, label]) => (
-                <kemet-option label={label} value={value} {...(value === sort && { selected: true })}></kemet-option>
-              ))}
-            </kemet-select>
-          </kemet-field>
-        </header>
-        <hr /><br />
-        {products && products.length > 0 ? (
-          <lasz-products>
-            {products.map((product: any) => <lasz-product key={product.id} data={JSON.stringify(product)}></lasz-product>)}
-          </lasz-products>
-        ) : (
-          <p>No products found in this category.</p>
-        )}
-      </lasz-view-products>
-    ) : (
-      <br />
-      <h2>We couldn't find any items in <strong>{slug}</strong>.</h2>
-    )}
+    <section>
+      {category ? (
+        <lasz-view-products>
+          <header>
+            <h2>{category.name}</h2>
+            <p>{category.description}</p>
+            <kemet-field>
+              <kemet-select slot="input" name="orderby">
+                {Array.from(validSortOptions.entries()).map(([value, label]) => (
+                  <kemet-option label={label} value={value} {...(value === sort && { selected: true })}></kemet-option>
+                ))}
+              </kemet-select>
+            </kemet-field>
+          </header>
+          <hr /><br />
+          {products && products.length > 0 ? (
+            <lasz-products>
+              {products.map((product: any) => <lasz-product key={product.id} data={JSON.stringify(product)}></lasz-product>)}
+            </lasz-products>
+          ) : (
+            <p>No products found in this category.</p>
+          )}
+        </lasz-view-products>
+      ) : (
+        <br />
+        <h2>We couldn't find any items in <strong>{slug}</strong>.</h2>
+      )}
+    </section>
   </lasz-page-container>
 </lasz-page-main>
 <script>

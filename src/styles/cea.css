@@ -594,8 +594,22 @@ lasz-footer-legal {
   }
 }
 
+lasz-view-products {
+  display: block;
+  margin: 3rem auto;
 
-/* convert later */
+  header {
+    position: relative;
+    kemet-field {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+  }
+}
+
+
+/* TODO: convert later */
 business-page-container,
 lasz-page-container {
   display: block;
