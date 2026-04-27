@@ -1,5 +1,4 @@
 import { createStore } from 'zustand/vanilla';
-import { stateTaxRates } from '../shared/data';
 
 const CART_STORAGE_KEY = 'lasz-cart-data';
 const CART_TOKEN_KEY = 'lasz-cart-token';
@@ -70,15 +69,15 @@ export interface CartActions {
   restoreCart: () => void;
   saveCart: () => void;
   getTotal: () => string;
-  getShippingCost: (hasAddressInfo?: boolean) => string;
-  getTaxCost: (hasAddressInfo?: boolean, stateCode?: string) => string;
+  getShippingCost: () => string;
+  getTaxCost: () => string;
   getSubtotal: () => string;
   getCurrencySymbol: () => string;
 }
 
 export interface CartStore extends CartState, CartActions {}
 
-const PUBLIC_API_URL = import.meta.env.PUBLIC_API_URL || 'https://woocommerce.deificarts.com';
+const PUBLIC_API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8888';
 
 const saveCartToStorage = (items: CartItem[], total: string, cartToken: string | null, nonce: string | null) => {
   // Check if we're in a browser environment
@@ -260,8 +259,8 @@ const store = createStore<CartStore>((set, get) => ({
       });
 
       // Save to localStorage after successful API call
-      const { items, total, cartToken: updatedToken, nonce: updatedNonce } = get();
-      saveCartToStorage(items, total, updatedToken, updatedNonce);
+      const { items, total, cartToken: updatedToken, nonce: currentNonce } = get();
+      saveCartToStorage(items, total, updatedToken, currentNonce);
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to add to cart',
@@ -454,57 +453,109 @@ const store = createStore<CartStore>((set, get) => ({
         isLoading: false
       });
     }
-  },
 
-  getTotal: () => {
-    const { totals, items } = get();
-
-    // Use API total if available and valid, otherwise fall back to calculated value
-    if (totals?.total_price && parseFloat(totals.total_price) > 0) {
-      return (parseFloat(totals.total_price) * 0.01).toFixed(2);
+    if (nonce) {
+      headers['X-WC-Store-API-Nonce'] = nonce;
     }
 
-    // Only calculate if there are items in cart
-    if (items.length > 0) {
-      const subtotal = (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
-      const shipping = 9.99;
-      const tax = parseFloat(subtotal) * 0.08;
-      return (parseFloat(subtotal) + shipping + tax).toFixed(2);
+    const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart/update-item`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        key,
+        quantity,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update cart item');
     }
 
-    // Return 0 if no items
-    return '0.00';
-  },
+    const data = await response.json();
+    const newCartToken = response.headers.get('Cart-Token');
 
-  getShippingCost: (hasAddressInfo = false) => {
-    const { totals, items } = get();
-    if (totals?.total_shipping && parseFloat(totals.total_shipping) > 0) {
-      return (parseFloat(totals.total_shipping) * 0.01).toFixed(2);
-    }
-    // Only show shipping cost if there are items in cart AND user has entered address info
-    if (items.length > 0 && hasAddressInfo) {
-      return '9.99';
-    }
-    return '0.00';
-  },
+    set({
+      items: data.items || [],
+      total: data.totals?.total_price || data.totals_total || '0',
+      totals: data.totals || null,
+      shippingRates: data.shipping_rates || null,
+      cartToken: newCartToken || cartToken,
+      isLoading: false
+    });
 
-  getTaxCost: (hasAddressInfo = false, stateCode = '') => {
-    const { totals, items } = get();
-    if (totals?.total_tax && parseFloat(totals.total_tax) > 0) {
-      return (parseFloat(totals.total_tax) * 0.01).toFixed(2);
-    }
-    // Only calculate tax if there are items in cart AND user has entered address info
-    if (items.length > 0 && hasAddressInfo && stateCode) {
-      const subtotal = (items.reduce((total, item) => total + (parseFloat(item.prices.price) * item.quantity), 0) * 0.01).toFixed(2);
-      const taxRate = stateTaxRates[stateCode.toUpperCase()] || 0;
-      return (parseFloat(subtotal) * taxRate).toFixed(2);
-    }
-    return '0.00';
-  },
+    // Save to localStorage after successful API call
+    const { items, total, cartToken: updatedToken, nonce: currentNonce } = get();
+    saveCartToStorage(items, total, updatedToken, currentNonce);
+  } catch (error) {
+    set({
+      error: error instanceof Error ? error.message : 'Failed to update cart',
+      isLoading: false
+    });
+  }
+},
 
-  getSubtotal: () => {
-    const { totals } = get();
-    if (totals?.total_items) {
+clearCart: async () => {
+  set({ isLoading: true, error: null });
+
+  try {
+    const { cartToken, nonce } = get();
+    const headers: Record<string, string> = {};
+
+    if (cartToken) {
+      headers['Cart-Token'] = cartToken;
+    }
+
+    if (nonce) {
+      headers['X-WC-Store-API-Nonce'] = nonce;
+    }
+
+    const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart/clear`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to clear cart');
+    }
+
+    set({
+      items: [],
+      total: '0',
+      cartToken,
+      isLoading: false
+    });
+
+    // Clear localStorage after successful API call
+    clearCartFromStorage();
+  } catch (error) {
+    set({
+      error: error instanceof Error ? error.message : 'Failed to clear cart',
+      isLoading: false
+    });
+  }
+},
+
+fetchCart: async () => {
+  set({ isLoading: true, error: null });
+
+  try {
+    const { cartToken } = get();
+    const headers: Record<string, string> = {};
+
+    if (cartToken) {
+      headers['Cart-Token'] = cartToken;
+    }
+
+    const response = await fetch(`${PUBLIC_API_URL}/wp-json/wc/store/v1/cart`, {
+      headers,
+    });
+
+  if (totals?.total_shipping && parseFloat(totals.total_shipping) > 0) {
+    return (parseFloat(totals.total_shipping) * 0.01).toFixed(2);
+  }
+  // Only show shipping cost if there are items in cart
+  if (items.length > 0) {
+    return '9.99';
       return (parseFloat(totals.total_items) * 0.01).toFixed(2);
     }
     // Fallback to calculation

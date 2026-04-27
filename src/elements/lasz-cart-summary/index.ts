@@ -53,7 +53,7 @@ export class LaszCartSummary extends LitElement {
           <span>${this.cartController.actions?.getCurrencySymbol()}${this.cartController.actions?.getTotal()}</span>
         </div>
         <div class="actions">
-          <kemet-button link href="/checkout" rounded="lg">
+          <kemet-button link="/checkout" rounded="lg">
             Proceed to Checkout
           </kemet-button>
         </div>
