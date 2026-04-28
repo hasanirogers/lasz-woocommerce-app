@@ -608,6 +608,36 @@ lasz-view-products {
   }
 }
 
+lasz-view-order-received {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6rem 2rem;
+
+  & > div {
+    margin-top: 32px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  kemet-button[variant="standard"] {
+    --kemet-button-color: var(--color-white);
+    --kemet-button-background-color: rgb(var(--kemet-color-gray-800));
+  }
+
+  kemet-button[variant="outlined"] {
+    --kemet-button-color: var(--color-gray-800);
+    --kemet-button-border-color: var(--color-gray-800);
+  }
+
+  kemet-icon-bootstrap {
+    color: var(--color-success);
+  }
+}
 
 /* TODO: convert later */
 business-page-container,

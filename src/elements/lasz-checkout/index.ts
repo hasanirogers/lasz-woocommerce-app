@@ -376,7 +376,7 @@ export class LaszCheckout extends LitElement {
       const result = await response.json();
 
       if (response.ok && result.order_id) {
-        window.location.href = `/order-received/${result.order_id}`;
+        window.location.href = `/orders/received/${result.order_id}`;
       } else {
         this.checkoutError = result.message || 'Checkout failed. Please try again.';
       }
