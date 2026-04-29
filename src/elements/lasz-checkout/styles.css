@@ -30,11 +30,35 @@ form {
   }
 }
 
+kemet-field {
+  font-size: 1rem;
+}
+
 lasz-checkout-container {
   display: block;
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem;
+}
+
+lasz-checkout-billing {
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .columns.two {
+    @media (width > 768px) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .columns.three {
+    @media (width > 768px) {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
 }
 
 last-checkout-items {
@@ -73,7 +97,7 @@ lasz-checkout-item {
 
 lasz-checkout-summary {
   position: sticky;
-  top: 5rem;
+  top: 6rem;
   align-self: flex-start;
 }
 
@@ -170,62 +194,7 @@ lasz-checkout-totals {
 
 
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
 
-@media (max-width: 568px) {
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-  color: #333;
-  font-size: 14px;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.form-group input[type="checkbox"] {
-  width: auto;
-  margin-right: 8px;
-}
-
-.form-group label:has(input[type="checkbox"]) {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-weight: 400;
-}
 
 .shipping-address-section {
   background-color: #f8f9fa;

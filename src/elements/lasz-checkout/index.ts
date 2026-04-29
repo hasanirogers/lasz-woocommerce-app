@@ -162,6 +162,52 @@ export class LaszCheckout extends LitElement {
     this.loadPaymentMethods();
   }
 
+  render() {
+    const { items, isLoading, error } = this.cartController.data;
+
+    if (isLoading) {
+      return html`
+        <lasz-checkout-container>
+          <div class="loading">
+            <p>Loading checkout...</p>
+          </div>
+        </lasz-checkout-container>
+      `;
+    }
+
+    if (error) {
+      return html`
+        <lasz-checkout-container>
+          <div class="error">
+            <p>Error: ${error}</p>
+          </div>
+        </lasz-checkout-container>
+      `;
+    }
+
+    if (items.length === 0) {
+      return html`
+        <lasz-checkout-container>
+          <div class="empty-cart">
+            <p>Your cart is empty.</p>
+            <a href="/products">Continue Shopping</a>
+          </div>
+        </lasz-checkout-container>
+      `;
+    }
+
+    return html`
+      <lasz-checkout-container>
+        <form @submit=${this.handleSubmit}>
+          <section>
+            ${this.makeBilling()}
+            ${this.makeSummary()}
+          </section>
+        </form>
+      </lasz-checkout-container>
+    `;
+  }
+
   private initializeStripe() {
     // Initialize Stripe with your publishable key
     const publishableKey = import.meta.env.PUBLIC_STRIPE_KEY;
@@ -216,7 +262,7 @@ export class LaszCheckout extends LitElement {
   }
 
   private handleInputChange(event: Event) {
-    const target = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    const target = (event as CustomEvent).detail.element as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
     const { name, value, type } = target;
 
     if (type === 'checkbox') {
@@ -231,6 +277,8 @@ export class LaszCheckout extends LitElement {
         [name]: value
       };
     }
+
+    console.log('Form data updated:', this.formData);
   }
 
   private async handleSubmit(event: Event) {
@@ -426,52 +474,6 @@ export class LaszCheckout extends LitElement {
       console.error('Stripe PM Error:', err);
       return null;
     }
-  }
-
-  render() {
-    const { items, isLoading, error } = this.cartController.data;
-
-    if (isLoading) {
-      return html`
-        <lasz-checkout-container>
-          <div class="loading">
-            <p>Loading checkout...</p>
-          </div>
-        </lasz-checkout-container>
-      `;
-    }
-
-    if (error) {
-      return html`
-        <lasz-checkout-container>
-          <div class="error">
-            <p>Error: ${error}</p>
-          </div>
-        </lasz-checkout-container>
-      `;
-    }
-
-    if (items.length === 0) {
-      return html`
-        <lasz-checkout-container>
-          <div class="empty-cart">
-            <p>Your cart is empty.</p>
-            <a href="/products">Continue Shopping</a>
-          </div>
-        </lasz-checkout-container>
-      `;
-    }
-
-    return html`
-      <lasz-checkout-container>
-        <form @submit=${this.handleSubmit}>
-          <section>
-            ${this.makeBilling()}
-            ${this.makeSummary()}
-          </section>
-        </form>
-      </lasz-checkout-container>
-    `;
   }
 
   private renderPaymentDetails() {
@@ -730,34 +732,32 @@ export class LaszCheckout extends LitElement {
     return html`
       <lasz-checkout-billing>
         <h2>Billing Details</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="billing_first_name">First Name *</label>
-            <input
-              type="text"
-              id="billing_first_name"
+        <div class="columns two">
+          <kemet-field label="First Name *" slug="billing_first_name">
+            <kemet-input
+              required
+              validate-on-blur
+              slot="input"
               name="billing_first_name"
+              rounded="md"
               .value=${this.formData.billing_first_name}
-              @input=${this.handleInputChange}
-              @change=${this.handleInputChange}
+              @kemet-input=${this.handleInputChange}
+            ></kemet-input>
+          </kemet-field>
+          <kemet-field label="Last Name *" slug="billing_last_name">
+            <kemet-input
               required
-            />
-          </div>
-          <div class="form-group">
-            <label for="billing_last_name">Last Name *</label>
-            <input
-              type="text"
-              id="billing_last_name"
+              validate-on-blur
+              slot="input"
               name="billing_last_name"
+              rounded="md"
               .value=${this.formData.billing_last_name}
-              @input=${this.handleInputChange}
-              @change=${this.handleInputChange}
-              required
-            />
-          </div>
+              @kemet-input=${this.handleInputChange}
+            ></kemet-input>
+          </kemet-field>
         </div>
 
-        <div class="form-group">
+        <div>
           <label for="billing_email">Email Address *</label>
           <input
             type="email"
