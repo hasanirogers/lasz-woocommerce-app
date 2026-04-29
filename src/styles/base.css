@@ -24,6 +24,8 @@
     --color-primary: rgb(var(--kemet-color-violet-900));
 
     --page-width: 1440px;
+
+    --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.1);
   }
 
   html {

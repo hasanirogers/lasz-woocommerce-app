@@ -78,7 +78,7 @@ export interface CartActions {
 
 export interface CartStore extends CartState, CartActions {}
 
-const PUBLIC_API_URL = import.meta.env.PUBLIC_API_URL || 'https://woocommerce.deificarts.com';
+const PUBLIC_API_URL = import.meta.env.PUBLIC_API_URL;
 
 const saveCartToStorage = (items: CartItem[], total: string, cartToken: string | null, nonce: string | null) => {
   // Check if we're in a browser environment
@@ -160,7 +160,6 @@ const loadCartFromStorage = () => {
 };
 
 const clearCartFromStorage = () => {
-  // Check if we're in a browser environment
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
     return;
   }

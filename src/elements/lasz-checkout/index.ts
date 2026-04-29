@@ -5,11 +5,11 @@ import cartStore, { type CartStore } from '../../stores/cart';
 import { usStates } from '../../shared/data';
 import styles from './styles.css?inline';
 
-interface EventTarget {
-    addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
-    removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
-    dispatchEvent(event: Event): void;
-  }
+// interface EventTarget {
+//     addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+//     removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+//     dispatchEvent(event: Event): void;
+//   }
 
 interface CheckoutForm {
   billing_first_name: string;
@@ -33,16 +33,13 @@ interface CheckoutForm {
   customer_note: string;
   payment_method: string;
   ship_to_different_address: boolean;
-  // Card payment fields
   card_number: string;
   card_expiry: string;
   card_cvc: string;
   card_name: string;
-  // Bank account fields
   account_holder_name: string;
   routing_number: string;
   account_number: string;
-  // Payment details field
   payment_details: string;
 }
 
@@ -67,16 +64,16 @@ export class LaszCheckout extends LitElement {
 
   @state()
   private formData: CheckoutForm = {
-    billing_first_name: 'First',
-    billing_last_name: 'Last',
-    billing_email: 'first.last@email.com',
+    billing_first_name: '',
+    billing_last_name: '',
+    billing_email: '',
     billing_phone: '',
-    billing_address_1: '1234 Address St',
+    billing_address_1: '',
     billing_address_2: '',
-    billing_city: 'Southfield',
-    billing_state: 'MI',
-    billing_postcode: '48075',
-    billing_country: 'US',
+    billing_city: '',
+    billing_state: '',
+    billing_postcode: '',
+    billing_country: '',
     shipping_first_name: '',
     shipping_last_name: '',
     shipping_address_1: '',
@@ -88,16 +85,13 @@ export class LaszCheckout extends LitElement {
     customer_note: '',
     payment_method: 'stripe',
     ship_to_different_address: false,
-    // Card payment fields
     card_number: '',
     card_expiry: '',
     card_cvc: '',
     card_name: '',
-    // Bank account fields
     account_holder_name: '',
     routing_number: '',
     account_number: '',
-    // Payment details field
     payment_details: ''
   };
 
@@ -170,17 +164,9 @@ export class LaszCheckout extends LitElement {
 
   private initializeStripe() {
     // Initialize Stripe with your publishable key
-    const publishableKey = import.meta.env.PUBLIC_STRIPE_KEY || 'pk_test_51234567890abcdef';
+    const publishableKey = import.meta.env.PUBLIC_STRIPE_KEY;
 
-    console.log('Stripe initialization debug:', {
-      hasWindow: typeof window !== 'undefined',
-      hasStripeScript: !!(window as any).Stripe,
-      publishableKey: publishableKey,
-      isPlaceholder: publishableKey === 'pk_test_51234567890abcdef',
-      envKey: import.meta.env.PUBLIC_STRIPE_KEY
-    });
-
-    if (typeof window !== 'undefined' && publishableKey !== 'pk_test_51234567890abcdef') {
+    if (typeof window !== 'undefined') {
       if ((window as any).Stripe) {
         // Stripe script is loaded, initialize it
         this.stripe = (window as any).Stripe(publishableKey);
@@ -248,7 +234,6 @@ export class LaszCheckout extends LitElement {
   }
 
   private async handleSubmit(event: Event) {
-    console.log('handleSubmit called!');
     event.preventDefault();
     this.isProcessing = true;
     this.checkoutError = '';
@@ -444,43 +429,7 @@ export class LaszCheckout extends LitElement {
   }
 
   render() {
-    const { items, isLoading, error, total, totals } = this.cartController.data;
-    let subtotal = '0.00';
-    let shippingCost = '0.00';
-    let taxCost = '0.00';
-    let currencySymbol = '$';
-    let grandTotal = '0.00';
-
-    // Check if user has entered address info for both tax and shipping calculations
-    const hasAddressInfo = !!(this.formData.billing_state);
-
-    try {
-      subtotal = this.cartController.actions?.getSubtotal() || '0.00';
-      shippingCost = this.cartController.actions?.getShippingCost(hasAddressInfo) || '0.00';
-      taxCost = this.cartController.actions?.getTaxCost(hasAddressInfo, this.formData.billing_state) || '0.00';
-      currencySymbol = this.cartController.actions?.getCurrencySymbol() || '$';
-      currencySymbol = this.cartController.actions?.getCurrencySymbol() || '$';
-
-      // Calculate grand total as subtotal + shipping + tax to avoid double-counting
-      grandTotal = (parseFloat(subtotal) + parseFloat(shippingCost) + parseFloat(taxCost)).toFixed(2);
-    } catch (error) {
-      console.error('Error accessing cart controller methods:', error);
-      console.log('Cart controller actions:', this.cartController.actions);
-      console.log('Has address info:', hasAddressInfo);
-      console.log('Form data:', this.formData);
-    }
-
-    console.log('Checkout Totals Debug:', {
-      itemsCount: items.length,
-      items: items,
-      subtotal,
-      shippingCost,
-      taxCost,
-      grandTotal,
-      cartTotal: total,
-      apiTotals: totals,
-      hasItems: items.length > 0
-    });
+    const { items, isLoading, error } = this.cartController.data;
 
     if (isLoading) {
       return html`
@@ -515,229 +464,11 @@ export class LaszCheckout extends LitElement {
 
     return html`
       <lasz-checkout-container>
-        <form @submit=${this.handleSubmit} class="checkout-form">
-          <div class="checkout-columns">
-            <div class="billing-column">
-              <h2>Billing Details</h2>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="billing_first_name">First Name *</label>
-                  <input
-                    type="text"
-                    id="billing_first_name"
-                    name="billing_first_name"
-                    .value=${this.formData.billing_first_name}
-                    @input=${this.handleInputChange}
-                    @change=${this.handleInputChange}
-                    required
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="billing_last_name">Last Name *</label>
-                  <input
-                    type="text"
-                    id="billing_last_name"
-                    name="billing_last_name"
-                    .value=${this.formData.billing_last_name}
-                    @input=${this.handleInputChange}
-                    @change=${this.handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="billing_email">Email Address *</label>
-                <input
-                  type="email"
-                  id="billing_email"
-                  name="billing_email"
-                  .value=${this.formData.billing_email}
-                  @input=${this.handleInputChange}
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="billing_phone">Phone</label>
-                <input
-                  type="tel"
-                  id="billing_phone"
-                  name="billing_phone"
-                  .value=${this.formData.billing_phone}
-                  @input=${this.handleInputChange}
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="billing_address_1">Address *</label>
-                <input
-                  type="text"
-                  id="billing_address_1"
-                  name="billing_address_1"
-                  .value=${this.formData.billing_address_1}
-                  @input=${this.handleInputChange}
-                  @change=${this.handleInputChange}
-                  required
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="billing_address_2">Address Line 2</label>
-                <input
-                  type="text"
-                  id="billing_address_2"
-                  name="billing_address_2"
-                  .value=${this.formData.billing_address_2}
-                  @input=${this.handleInputChange}
-                />
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="billing_city">City *</label>
-                  <input
-                    type="text"
-                    id="billing_city"
-                    name="billing_city"
-                    .value=${this.formData.billing_city}
-                    @input=${this.handleInputChange}
-                    required
-                  />
-                </div>
-                <div class="form-group">
-                  <label for="billing_state">State *</label>
-                  <select
-                    id="billing_state"
-                    name="billing_state"
-                    .value=${this.formData.billing_state}
-                    @change=${this.handleInputChange}
-                    required
-                  >
-                    <option value="">Select a state</option>
-                    ${usStates.map(state => html`
-                      <option value=${state.value}>${state.label}</option>
-                    `)}
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="billing_postcode">ZIP Code *</label>
-                  <input
-                    type="text"
-                    id="billing_postcode"
-                    name="billing_postcode"
-                    .value=${this.formData.billing_postcode}
-                    @input=${this.handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    name="ship_to_different_address"
-                    .checked=${this.formData.ship_to_different_address}
-                    @change=${this.handleInputChange}
-                  />
-                  Ship to a different address?
-                </label>
-              </div>
-
-              ${this.formData.ship_to_different_address ? this.renderShippingAddress() : ''}
-            </div>
-
-            <div class="order-column">
-              <h2>Order Summary</h2>
-
-              <div class="order-items">
-                ${items.map(item => html`
-                  <div class="order-item">
-                    <div class="item-info">
-                      <div class="item-name">${item.name}</div>
-                      <div class="item-quantity">Qty: ${item.quantity}</div>
-                    </div>
-                    <div class="item-total">${currencySymbol}${(parseFloat(item.prices.price) * item.quantity * 0.01).toFixed(2)}</div>
-                  </div>
-                `)}
-              </div>
-
-              <div class="order-totals">
-                <div class="total-row">
-                  <span>Subtotal:</span>
-                  <span>${currencySymbol}${subtotal}</span>
-                </div>
-                <div class="total-row">
-                  <span>Shipping:</span>
-                  <span>${currencySymbol}${shippingCost}</span>
-                </div>
-                <div class="total-row">
-                  <span>Tax:</span>
-                  <span>${currencySymbol}${taxCost}</span>
-                </div>
-                <div class="total-row grand-total">
-                  <span>Total:</span>
-                  <span>${currencySymbol}${grandTotal}</span>
-                </div>
-              </div>
-
-              <div class="payment-section">
-                <h3>Payment Method</h3>
-                ${this.paymentMethodsError ? html`
-                  <div class="payment-methods-error">
-                    <p>${this.paymentMethodsError}</p>
-                  </div>
-                ` : html`
-                  <div class="payment-methods">
-                    ${this.paymentMethods.map(method => html`
-                      <label class="payment-method">
-                        <input
-                          type="radio"
-                          name="payment_method"
-                          value=${method.id}
-                          .checked=${this.formData.payment_method === method.id}
-                          @change=${this.handleInputChange}
-                        />
-                        <span>${method.title}</span>
-                      </label>
-                    `)}
-                  </div>
-                `}
-              </div>
-
-              ${this.renderPaymentDetails()}
-
-              <div class="form-group">
-                <label for="customer_note">Order Notes (Optional)</label>
-                <textarea
-                  id="customer_note"
-                  name="customer_note"
-                  .value=${this.formData.customer_note}
-                  @input=${this.handleInputChange}
-                  rows="3"
-                ></textarea>
-              </div>
-
-              ${this.checkoutError ? html`
-                <div class="checkout-error">
-                  <p>${this.checkoutError}</p>
-                </div>
-              ` : ''}
-
-              <button
-                type="submit"
-                class="checkout-button"
-                ?disabled=${this.isProcessing}
-              >
-                ${this.isProcessing ? 'Processing...' : `Place Order ${currencySymbol}${grandTotal}`}
-              </button>
-            </div>
-          </div>
+        <form @submit=${this.handleSubmit}>
+          <section>
+            ${this.makeBilling()}
+            ${this.makeSummary()}
+          </section>
         </form>
       </lasz-checkout-container>
     `;
@@ -886,7 +617,7 @@ export class LaszCheckout extends LitElement {
     }
   }
 
-  private renderShippingAddress() {
+  private makeShipping() {
     return html`
       <div class="shipping-address-section">
         <h3>Shipping Address</h3>
@@ -992,6 +723,245 @@ export class LaszCheckout extends LitElement {
           </div>
         </div>
       </div>
+    `;
+  }
+
+  private makeBilling() {
+    return html`
+      <lasz-checkout-billing>
+        <h2>Billing Details</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="billing_first_name">First Name *</label>
+            <input
+              type="text"
+              id="billing_first_name"
+              name="billing_first_name"
+              .value=${this.formData.billing_first_name}
+              @input=${this.handleInputChange}
+              @change=${this.handleInputChange}
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="billing_last_name">Last Name *</label>
+            <input
+              type="text"
+              id="billing_last_name"
+              name="billing_last_name"
+              .value=${this.formData.billing_last_name}
+              @input=${this.handleInputChange}
+              @change=${this.handleInputChange}
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="billing_email">Email Address *</label>
+          <input
+            type="email"
+            id="billing_email"
+            name="billing_email"
+            .value=${this.formData.billing_email}
+            @input=${this.handleInputChange}
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="billing_phone">Phone</label>
+          <input
+            type="tel"
+            id="billing_phone"
+            name="billing_phone"
+            .value=${this.formData.billing_phone}
+            @input=${this.handleInputChange}
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="billing_address_1">Address *</label>
+          <input
+            type="text"
+            id="billing_address_1"
+            name="billing_address_1"
+            .value=${this.formData.billing_address_1}
+            @input=${this.handleInputChange}
+            @change=${this.handleInputChange}
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="billing_address_2">Address Line 2</label>
+          <input
+            type="text"
+            id="billing_address_2"
+            name="billing_address_2"
+            .value=${this.formData.billing_address_2}
+            @input=${this.handleInputChange}
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="billing_city">City *</label>
+            <input
+              type="text"
+              id="billing_city"
+              name="billing_city"
+              .value=${this.formData.billing_city}
+              @input=${this.handleInputChange}
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="billing_state">State *</label>
+            <select
+              id="billing_state"
+              name="billing_state"
+              .value=${this.formData.billing_state}
+              @change=${this.handleInputChange}
+              required
+            >
+              <option value="">Select a state</option>
+              ${usStates.map(state => html`
+                <option value=${state.value}>${state.label}</option>
+              `)}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="billing_postcode">ZIP Code *</label>
+            <input
+              type="text"
+              id="billing_postcode"
+              name="billing_postcode"
+              .value=${this.formData.billing_postcode}
+              @input=${this.handleInputChange}
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input
+              type="checkbox"
+              name="ship_to_different_address"
+              .checked=${this.formData.ship_to_different_address}
+              @change=${this.handleInputChange}
+            />
+            Ship to a different address?
+          </label>
+        </div>
+
+        ${this.formData.ship_to_different_address ? this.makeShipping() : ''}
+        ${this.makePaymentMethod()}
+      </lasz-checkout-billing>
+    `;
+  }
+
+  private makeSummary() {
+    const { items } = this.cartController.data;
+    const subtotal = this.cartController.actions?.getSubtotal() || '0.00';
+    const shippingCost = this.cartController.actions?.getShippingCost(false) || '0.00';
+    const taxCost = this.cartController.actions?.getTaxCost(false, '') || '0.00';
+    const currencySymbol = this.cartController.actions?.getCurrencySymbol() || '$';
+    const grandTotal = (parseFloat(subtotal) + parseFloat(shippingCost) + parseFloat(taxCost)).toFixed(2);
+
+    return html`
+      <lasz-checkout-summary>
+        <h2>Order Summary</h2>
+        <lasz-checkout-items>
+          ${items.map(item => html`
+            <lasz-checkout-item>
+              <div class="info">
+                <div class="name">${item.name}</div>
+                <div class="quantity">Qty: ${item.quantity}</div>
+              </div>
+              <div class="total">${currencySymbol}${(parseFloat(item.prices.price) * item.quantity * 0.01).toFixed(2)}</div>
+            </lasz-checkout-item>
+          `)}
+        </lasz-checkout-items>
+        <lasz-checkout-totals>
+          <div class="row">
+            <span>Subtotal:</span>
+            <span>${currencySymbol}${subtotal}</span>
+          </div>
+          <div class="row">
+            <span>Shipping:</span>
+            <span>${currencySymbol}${shippingCost}</span>
+          </div>
+          <div class="row">
+            <span>Tax:</span>
+            <span>${currencySymbol}${taxCost}</span>
+          </div>
+          <div class="row grand">
+            <span>Total:</span>
+            <span>${currencySymbol}${grandTotal}</span>
+          </div>
+        </lasz-checkout-totals>
+      </lasz-checkout-summary>
+    </lasz-checkout-columns>
+    `;
+  }
+
+  private makePaymentMethod() {
+    return html`
+      <div class="payment-section">
+          <h3>Payment Method</h3>
+          ${this.paymentMethodsError ? html`
+            <div class="payment-methods-error">
+              <p>${this.paymentMethodsError}</p>
+            </div>
+          ` : html`
+            <div class="payment-methods">
+              ${this.paymentMethods.map(method => html`
+                <label class="payment-method">
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    value=${method.id}
+                    .checked=${this.formData.payment_method === method.id}
+                    @change=${this.handleInputChange}
+                  />
+                  <span>${method.title}</span>
+                </label>
+              `)}
+            </div>
+          `}
+        </div>
+
+        ${this.renderPaymentDetails()}
+
+        <div class="form-group">
+          <label for="customer_note">Order Notes (Optional)</label>
+          <textarea
+            id="customer_note"
+            name="customer_note"
+            .value=${this.formData.customer_note}
+            @input=${this.handleInputChange}
+            rows="3"
+          ></textarea>
+        </div>
+
+        ${this.checkoutError ? html`
+          <div class="checkout-error">
+            <p>${this.checkoutError}</p>
+          </div>
+        ` : ''}
+
+        <button
+          type="submit"
+          class="checkout-button"
+          ?disabled=${this.isProcessing}
+        >
+          ${this.isProcessing ? 'Processing...' : 'Place Order'}
+        </button>
     `;
   }
 }

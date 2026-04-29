@@ -10,7 +10,7 @@ kemet-drawer {
 
   &::part(drawer),
   &::part(container) {
-    overflow: auto;
+    overflow: visible;
   }
 
   > [slot="content"] {
